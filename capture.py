@@ -10,7 +10,7 @@ flow_stats = defaultdict(lambda: {
     "bytes": 0,        # total bytes in this flow
     "start_time": time.time(),  # when we first saw this flow
     "tcp_flags": set(),         # keep track of different TCP flags seen
-    # Add more stats as needed
+    # ...
 })
 
 def map_protocol(proto_num):
@@ -34,7 +34,7 @@ def map_port_to_service(port):
         return "telnet"
     elif port == 25:
         return "smtp"
-    # Add more mappings as needed...
+    # ...
     return "private"
 
 def map_tcp_flags_to_flag(tcp_flags):
@@ -47,7 +47,7 @@ def map_tcp_flags_to_flag(tcp_flags):
       0x10 = ACK
     This is simplistic; real logic might track connection states over time.
     """
-    # Example logic:
+    # logic:
     if tcp_flags & 0x02 and not (tcp_flags & 0x10):
         return "S0"  # SYN sent, no ACK
     elif (tcp_flags & 0x02) and (tcp_flags & 0x10):
@@ -92,12 +92,10 @@ def extract_features(packet):
     if proto_num == 6 and tcp_flags:
         stats["tcp_flags"].add(tcp_flags)
 
-    # Here is where you'd build your final feature vector. For example:
     duration = time.time() - stats["start_time"]
     protocol_type = map_protocol(proto_num)
     service = map_port_to_service(dport) if protocol_type == "tcp" else "other"
     # For a single packet, pick the first TCP flags we see in this flow:
-    # In practice, you'd do something more robust.
     if stats["tcp_flags"]:
         any_flags = next(iter(stats["tcp_flags"]))
         flag = map_tcp_flags_to_flag(any_flags)
@@ -105,7 +103,7 @@ def extract_features(packet):
         flag = "OTH"
 
     src_bytes = stats["bytes"]  # total bytes from this flow
-    dst_bytes = 0  # you'd need reverse-flow tracking to do this properly
+    dst_bytes = 0  #reverse-flow tracking to do this properly
     land = 0       # set to 1 if srcIP == dstIP and srcPort == dstPort, etc.
 
     # Now, build a 41-column list matching your model’s schema
@@ -160,7 +158,7 @@ def packet_callback(packet):
     if features is None:
         return
 
-    # Send features to your Flask API
+    # Send features to Flask API
     try:
         import requests
         response = requests.post("http://127.0.0.1:5000/predict", json={"features": features})
@@ -170,5 +168,4 @@ def packet_callback(packet):
 
 if __name__ == '__main__':
     from scapy.all import sniff
-    # Adjust iface and count as needed
     sniff(iface="h1-eth0", prn=packet_callback, store=False)
