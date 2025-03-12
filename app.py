@@ -6,10 +6,8 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Load your trained model (same as before)
 model = joblib.load("/home/kim/Desktop/projects/detection/attack_detection_model.pkl")
 
-# Expected feature names (same 41 columns as before)
 expected_columns = [
     "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land",
     "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in", "num_compromised",
@@ -32,7 +30,7 @@ def predict():
     if features is None:
         return jsonify({"error": "No features provided"}), 400
     
-    # Convert the input features to a DataFrame with the expected column names
+    # Convert the input features to a DataFrame
     try:
         features_df = pd.DataFrame([features], columns=expected_columns)
     except Exception as e:
@@ -58,7 +56,7 @@ def dashboard():
     """
     Renders a simple HTML page that displays the latest predictions from predictions_log.
     """
-    # We pass predictions_log to the template
+    #  pass predictions_log to the template
     return render_template('dashboard.html', predictions=predictions_log)
 
 if __name__ == '__main__':
