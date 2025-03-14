@@ -6,6 +6,9 @@ from datetime import datetime
 
 app = Flask(__name__)
 
+predictions = []  
+
+
 model = joblib.load("/home/kim/Desktop/projects/detection/attack_detection_model.pkl")
 
 expected_columns = [
@@ -58,6 +61,18 @@ def dashboard():
     """
     #  pass predictions_log to the template
     return render_template('dashboard.html', predictions=predictions_log)
+
+@app.route("/clear_logs", methods=["POST"])
+def clear_logs():
+    global predictions
+    predictions = []  # Clear logs
+    return jsonify({"message": "Logs cleared successfully", "success": True, "normal_count": 0, "attack_count": 0})
+
+@app.route("/get_predictions")
+def get_predictions():
+    normal_count = sum(1 for p in predictions_log if p["prediction"] == "normal")
+    attack_count = sum(1 for p in predictions_log if p["prediction"] == "attack")
+    return jsonify({"predictions": predictions_log, "normal_count": normal_count, "attack_count": attack_count})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
