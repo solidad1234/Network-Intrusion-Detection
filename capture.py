@@ -158,7 +158,8 @@ def packet_callback(packet):
     if features is None:
         return
 
-    # Send features to Flask API
+    print("Extracted Features:", features)  #debugging
+
     try:
         import requests
         response = requests.post("http://127.0.0.1:5000/predict", json={"features": features})
@@ -166,6 +167,8 @@ def packet_callback(packet):
     except Exception as e:
         print("Error sending request:", e)
 
+
 if __name__ == '__main__':
     from scapy.all import sniff
-    sniff(iface="h1-eth0", prn=packet_callback, store=False)
+    sniff(iface="h1-eth0", prn=packet_callback, store=False, filter="tcp or udp")
+

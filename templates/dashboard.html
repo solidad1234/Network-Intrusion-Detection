@@ -1,3 +1,4 @@
+<!-- dashboard.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -8,10 +9,7 @@
             margin: 1rem;
             background-color: #f9f9f9;
         }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
+        h1 { text-align: center; color: #333; }
         .container {
             max-width: 80%;
             margin: auto;
@@ -26,7 +24,6 @@
             margin-top: 1rem;
         }
         th, td {
-            text-align: left;
             padding: 0.75rem;
             border: 1px solid #ddd;
         }
@@ -34,53 +31,36 @@
             background: #37474f;
             color: white;
         }
-        .prediction-normal {
-            background-color: #c8e6c9; /* Light green */
-        }
-        .prediction-attack {
-            background-color: #ffcdd2; /* Light red */
-        }
-        .btn-container {
-            text-align: right;
-            margin-bottom: 1rem;
-        }
+        .prediction-normal { background-color: #c8e6c9; }
+        .prediction-attack { background-color: #ffcdd2; }
+        .btn-container { text-align: right; margin-bottom: 1rem; }
         button {
             padding: 0.6rem 1rem;
             border: none;
             background: #1565c0;
             color: white;
-            font-size: 14px;
             cursor: pointer;
             border-radius: 4px;
             margin-left: 0.5rem;
         }
-        button:hover {
-            background: #0d47a1;
-        }
-        .btn-clear {
-            background: #d32f2f;
-        }
-        .btn-clear:hover {
-            background: #b71c1c;
-        }
+        button:hover { background: #0d47a1; }
+        .btn-clear { background: #d32f2f; }
+        .btn-clear:hover { background: #b71c1c; }
         .stats {
             display: flex;
             justify-content: space-between;
-            margin-top: 1rem;
             font-weight: bold;
+            margin-top: 1rem;
         }
-        .stats .normal {
-            color: green;
-        }
-        .stats .attack {
-            color: red;
-        }
+        .normal { color: green; }
+        .attack { color: red; }
     </style>
+
     <script>
-       function resetLogs() {
+        function resetLogs() {
             if (confirm("Are you sure you want to clear all logs?")) {
                 fetch('/clear_logs', { method: 'POST' })
-                    .then(response => response.json())
+                    .then(res => res.json())
                     .then(data => {
                         if (data.success) {
                             alert(data.message);
@@ -90,62 +70,47 @@
                                     <th>Features</th>
                                     <th>Prediction</th>
                                 </tr>
-                            `; // Clears the table
-                            
-                            // Update log counters dynamically
-                            document.querySelector(".normal").innerText = "Normal Logs: " + data.normal_count;
-                            document.querySelector(".attack").innerText = "Attack Logs: " + data.attack_count;
+                            `;
+                            document.querySelector(".normal").innerText = "Normal Logs: 0";
+                            document.querySelector(".attack").innerText = "Attack Logs: 0";
                         }
                     });
             }
         }
 
         function refreshData() {
-    fetch('/get_predictions')
-        .then(response => response.json())
-        .then(data => {
-            let table = document.querySelector("table");
+            fetch('/get_predictions')
+                .then(res => res.json())
+                .then(data => {
+                    const table = document.querySelector("table");
+                    table.innerHTML = `
+                        <tr>
+                            <th>Time</th>
+                            <th>Features</th>
+                            <th>Prediction</th>
+                        </tr>
+                    `;
 
-            // Keep table headers
-            table.innerHTML = `
-                <tr>
-                    <th>Time</th>
-                    <th>Features</th>
-                    <th>Prediction</th>
-                </tr>
-            `; 
+                    let normal = 0, attack = 0;
+                    data.predictions.forEach(item => {
+                        const row = document.createElement("tr");
+                        row.classList.add(item.prediction === "normal" ? "prediction-normal" : "prediction-attack");
+                        row.innerHTML = `
+                            <td>${item.time}</td>
+                            <td>${JSON.stringify(item.features)}</td>
+                            <td>${item.prediction}</td>
+                        `;
+                        table.appendChild(row);
+                        if (item.prediction === "normal") normal++;
+                        else attack++;
+                    });
 
-            let normalCount = 0, attackCount = 0;
+                    document.querySelector(".normal").innerText = `Normal Logs: ${normal}`;
+                    document.querySelector(".attack").innerText = `Attack Logs: ${attack}`;
+                });
+        }
 
-            // Populate the table with new data
-            data.predictions.forEach(item => {
-                let row = document.createElement("tr");
-                row.classList.add(item.prediction === "normal" ? "prediction-normal" : "prediction-attack");
-
-                row.innerHTML = `
-                    <td>${item.time}</td>
-                    <td>${JSON.stringify(item.features)}</td>
-                    <td>${item.prediction}</td>
-                `;
-
-                table.appendChild(row);
-
-                // Count normal and attack logs
-                if (item.prediction === "normal") normalCount++;
-                else attackCount++;
-            });
-
-            // Update log counters dynamically
-            document.querySelector(".normal").innerText = `Normal Logs: ${normalCount}`;
-            document.querySelector(".attack").innerText = `Attack Logs: ${attackCount}`;
-        })
-        .catch(error => console.error("Error fetching predictions:", error));
-}
-
-// Automatically refresh every 10 seconds
-setInterval(refreshData, 10000);
-
-
+        setInterval(refreshData, 10000);  // auto refresh every 10 seconds
     </script>
 </head>
 <body>
@@ -155,8 +120,6 @@ setInterval(refreshData, 10000);
             <button class="btn-clear" onclick="resetLogs()">Clear Logs</button>
             <button onclick="refreshData()">Refresh Data</button>
         </div>
-        <p>Below are the latest predictions:</p>
-
         <div class="stats">
             <span class="normal">Normal Logs: {{ normal_count }}</span>
             <span class="attack">Attack Logs: {{ attack_count }}</span>
