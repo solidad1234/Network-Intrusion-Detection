@@ -1,16 +1,16 @@
 from flask import Flask, request, jsonify, render_template
 import joblib
-import numpy as np
 import pandas as pd
 from datetime import datetime
 
 app = Flask(__name__)
 
-predictions = []  
+predictions_log = []  # Global list to hold all predictions
 
-
+# Load your trained model
 model = joblib.load("/home/kim/Desktop/projects/detection/attack_detection_model.pkl")
 
+# Expected feature names
 expected_columns = [
     "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land",
     "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in", "num_compromised",
@@ -23,56 +23,60 @@ expected_columns = [
     "dst_host_srv_serror_rate", "dst_host_rerror_rate", "dst_host_srv_rerror_rate"
 ]
 
-# A global list to store predictions in memory for the dashboard
-predictions_log = []
-
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json(force=True)
-    features = data.get("features", None)
+    features = data.get("features")
     if features is None:
         return jsonify({"error": "No features provided"}), 400
-    
-    # Convert the input features to a DataFrame
+
     try:
         features_df = pd.DataFrame([features], columns=expected_columns)
     except Exception as e:
         return jsonify({"error": f"Error constructing DataFrame: {str(e)}"}), 400
-    
-    # Make the prediction
+
     try:
         prediction = model.predict(features_df)
     except Exception as e:
-        return jsonify({"error": f"Error during prediction: {str(e)}"}), 500
-    
-    # Log the prediction with a timestamp for the dashboard
+        return jsonify({"error": f"Prediction error: {str(e)}"}), 500
+
+    # Store the result
     predictions_log.append({
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "features": features,   # or a subset if this is too large
+        "features": features,
         "prediction": prediction[0]
     })
-    
+
     return jsonify({"prediction": prediction.tolist()})
+
 
 @app.route('/dashboard')
 def dashboard():
-    """
-    Renders a simple HTML page that displays the latest predictions from predictions_log.
-    """
-    #  pass predictions_log to the template
-    return render_template('dashboard.html', predictions=predictions_log)
+    return render_template('dashboard.html', predictions=predictions_log[-20:])
 
-@app.route("/clear_logs", methods=["POST"])
+
+@app.route('/clear_logs', methods=['POST'])
 def clear_logs():
-    global predictions
-    predictions = []  # Clear logs
-    return jsonify({"message": "Logs cleared successfully", "success": True, "normal_count": 0, "attack_count": 0})
+    predictions_log.clear()
+    return jsonify({
+        "message": "Logs cleared successfully",
+        "success": True,
+        "normal_count": 0,
+        "attack_count": 0
+    })
 
-@app.route("/get_predictions")
+
+@app.route('/get_predictions')
 def get_predictions():
-    normal_count = sum(1 for p in predictions_log if p["prediction"] == "normal")
-    attack_count = sum(1 for p in predictions_log if p["prediction"] == "attack")
-    return jsonify({"predictions": predictions_log, "normal_count": normal_count, "attack_count": attack_count})
+    latest_predictions = predictions_log[-20:]
+    normal_count = sum(1 for p in latest_predictions if p["prediction"] == "normal")
+    attack_count = sum(1 for p in latest_predictions if p["prediction"] == "attack")
+    return jsonify({
+        "predictions": latest_predictions,
+        "normal_count": normal_count,
+        "attack_count": attack_count
+    })
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -33,8 +33,14 @@ data_test = pd.read_csv(test_file, names=columns)
 data_train.columns = data_train.columns.str.strip()
 data_test.columns = data_test.columns.str.strip()
 
+# ✅ INSERT THIS BLOCK HERE (after loading and cleaning):
+# Group all attacks under one label
+data_train['label'] = data_train['label'].apply(lambda x: 'normal' if x == 'normal' else 'attack')
+data_test['label'] = data_test['label'].apply(lambda x: 'normal' if x == 'normal' else 'attack')
+
 # Define categorical features that need encoding
 categorical_features = ["protocol_type", "service", "flag"]
+
 
 # Define numerical features: all columns except the categorical ones, the label, and the difficulty level
 numerical_features = [col for col in data_train.columns if col not in categorical_features + ["label", "difficulty"]]
