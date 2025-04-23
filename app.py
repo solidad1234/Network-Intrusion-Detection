@@ -37,17 +37,22 @@ def predict():
 
     try:
         prediction = model.predict(features_df)
+        raw_prediction = prediction[0]
     except Exception as e:
         return jsonify({"error": f"Prediction error: {str(e)}"}), 500
 
-    # Store the result
+    # Override logic for OTH flag
+    override_prediction = "anomaly" if features[3] == "OTH" else raw_prediction
+
+    # Log the result
     predictions_log.append({
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "features": features,
-        "prediction": prediction[0]
+        "prediction": override_prediction
     })
 
-    return jsonify({"prediction": prediction.tolist()})
+    return jsonify({"prediction": override_prediction})
+
 
 
 @app.route('/dashboard')
