@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Traffic Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            background-color: #f0f2f5;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: center;
+        }
+        input, button {
+            padding: 0.5rem;
+            font-size: 16px;
+        }
+        .chart-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        .chart-container {
+            width: 45%;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .btn-container {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .back-btn {
+            padding: 0.5rem 1rem;
+            background-color: #1565c0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .back-btn:hover {
+            background-color: #0d47a1;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Network Traffic Analysis</h1>
+
+<div class="filter-container">
+    <label>Start Time:</label>
+    <input type="datetime-local" id="startTime">
+    <label>End Time:</label>
+    <input type="datetime-local" id="endTime">
+    <button onclick="loadCharts()">Apply Filter</button>
+    <button onclick="clearFilters()" style="background-color: #d32f2f; color: white;">Clear Filters</button>
+    <button onclick="downloadCSV()" style="background-color: #4caf50; color: white;">Download CSV</button>
+    <button class="back-btn" onclick="window.location.href='/dashboard'">Go to Dashboard</button>
+</div>
+
+
+<div class="chart-row">
+    <div class="chart-container">
+        <h2 style="text-align:center;">Normal vs Attack Count</h2>
+        <canvas id="trafficBarChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2 style="text-align:center;">Traffic Over Time</h2>
+        <canvas id="trafficLineChart"></canvas>
+    </div>
+</div>
+
+<!-- <div class="btn-container">
+    <button class="back-btn" onclick="window.location.href='/dashboard'">Go to Dashboard</button>
+</div> -->
+
+<script>
+    let barChart, lineChart;
+    let filterStart = '';
+    let filterEnd = '';
+
+    async function loadCharts() {
+        filterStart = document.getElementById('startTime').value;
+        filterEnd = document.getElementById('endTime').value;
+
+        let url = '/get_analysis_data';
+        if (filterStart && filterEnd) {
+            url += `?start=${encodeURIComponent(filterStart)}&end=${encodeURIComponent(filterEnd)}`;
+        }
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!barChart || !lineChart) {
+            // Initial load
+            const ctxBar = document.getElementById('trafficBarChart').getContext('2d');
+            const ctxLine = document.getElementById('trafficLineChart').getContext('2d');
+
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Normal', 'Anomaly/Attack'],
+                    datasets: [{
+                        label: 'Traffic Counts',
+                        data: [data.normal_count, data.attack_count],
+                        backgroundColor: ['rgba(76, 175, 80, 0.6)', 'rgba(244, 67, 54, 0.6)'],
+                        borderColor: ['rgba(76, 175, 80, 1)', 'rgba(244, 67, 54, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+
+            lineChart = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: data.timestamps,
+                    datasets: [{
+                        label: '0=Normal, 1=Anomaly',
+                        data: data.labels.map(l => l === 'normal' ? 0 : 1),
+                        borderColor: 'rgb(75, 192, 192)',
+                        fill: false,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { min: 0, max: 1, ticks: { stepSize: 1, callback: value => value === 0 ? 'Normal' : 'Attack' } },
+                        x: { ticks: { maxRotation: 90, minRotation: 45 } }
+                    }
+                }
+            });
+        } else {
+            // Update existing
+            barChart.data.datasets[0].data = [data.normal_count, data.attack_count];
+            barChart.update();
+
+            lineChart.data.labels = data.timestamps;
+            lineChart.data.datasets[0].data = data.labels.map(l => l === 'normal' ? 0 : 1);
+            lineChart.update();
+        }
+    }
+
+    function clearFilters() {
+        document.getElementById('startTime').value = '';
+        document.getElementById('endTime').value = '';
+        loadCharts();
+    }
+
+    function downloadCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,Time,Label\n";
+        const labels = lineChart.data.labels;
+        const predictions = lineChart.data.datasets[0].data;
+
+        labels.forEach((time, index) => {
+            const label = predictions[index] === 0 ? 'normal' : 'attack';
+            csvContent += `${time},${label}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "traffic_analysis.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Auto-refresh every 10 seconds
+    setInterval(loadCharts, 10000);
+
+    loadCharts();  // First load
+
+</script>
+
+</body>
+</html>

@@ -73,13 +73,62 @@ def clear_logs():
 
 @app.route('/get_predictions')
 def get_predictions():
-    latest_predictions = predictions_log[-20:]
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    
+    filtered_predictions = predictions_log
+
+    if start_time and end_time:
+        filtered_predictions = [
+            p for p in predictions_log 
+            if start_time <= p["time"].replace(" ", "T") <= end_time
+        ]
+
+    latest_predictions = filtered_predictions[-20:]
     normal_count = sum(1 for p in latest_predictions if p["prediction"] == "normal")
-    attack_count = sum(1 for p in latest_predictions if p["prediction"] == "attack")
+    attack_count = sum(1 for p in latest_predictions if p["prediction"] in ["attack", "anomaly"])
+
     return jsonify({
         "predictions": latest_predictions,
         "normal_count": normal_count,
         "attack_count": attack_count
+    })
+
+
+# Analysis page
+@app.route('/analysis')
+def analysis():
+    return render_template('analysis.html')
+
+@app.route('/get_analysis_data')
+def get_analysis_data():
+    start_time = request.args.get('start')
+    end_time = request.args.get('end')
+
+    filtered_predictions = predictions_log
+
+    if start_time and end_time:
+        try:
+            start_dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M")
+            end_dt = datetime.strptime(end_time, "%Y-%m-%dT%H:%M")
+            filtered_predictions = [
+                p for p in predictions_log
+                if start_dt <= datetime.strptime(p['time'], "%Y-%m-%d %H:%M:%S") <= end_dt
+            ]
+        except Exception as e:
+            print("Invalid time filter:", e)
+
+    normal_count = sum(1 for p in filtered_predictions if p["prediction"] == "normal")
+    attack_count = sum(1 for p in filtered_predictions if p["prediction"] == "attack" or p["prediction"] == "anomaly")
+
+    timestamps = [p["time"] for p in filtered_predictions]
+    labels = [p["prediction"] for p in filtered_predictions]
+
+    return jsonify({
+        "normal_count": normal_count,
+        "attack_count": attack_count,
+        "timestamps": timestamps,
+        "labels": labels
     })
 
 
