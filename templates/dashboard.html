@@ -1,59 +1,25 @@
-<!-- dashboard.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <title>Attack Detection Dashboard</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 1rem;
-            background-color: #f9f9f9;
-        }
+        body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; }
         h1 { text-align: center; color: #333; }
-        .container {
-            max-width: 80%;
-            margin: auto;
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 1rem;
-        }
-        th, td {
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-        }
-        th {
-            background: #37474f;
-            color: white;
-        }
+        .container { max-width: 80%; margin: auto; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { padding: 0.75rem; border: 1px solid #ddd; }
+        th { background: #37474f; color: white; }
         .prediction-normal { background-color: #c8e6c9; }
-        .prediction-attack { background-color: #ffcdd2; }
+        .prediction-attack, .prediction-anomaly { background-color: #ffcdd2; }
         .btn-container { text-align: right; margin-bottom: 1rem; }
-        button {
-            padding: 0.6rem 1rem;
-            border: none;
-            background: #1565c0;
-            color: white;
-            cursor: pointer;
-            border-radius: 4px;
-            margin-left: 0.5rem;
-        }
+        button { padding: 0.6rem 1rem; border: none; background: #1565c0; color: white; cursor: pointer; border-radius: 4px; margin-left: 0.5rem; }
         button:hover { background: #0d47a1; }
         .btn-clear { background: #d32f2f; }
         .btn-clear:hover { background: #b71c1c; }
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin-top: 1rem;
-        }
+        .stats { display: flex; justify-content: space-between; font-weight: bold; margin-top: 1rem; }
         .normal { color: green; }
         .attack { color: red; }
+        .filter-container { margin-top: 1rem; display: flex; justify-content: space-between; }
     </style>
 
     <script>
@@ -79,7 +45,14 @@
         }
 
         function refreshData() {
-            fetch('/get_predictions')
+            const startTime = document.getElementById("startTime").value;
+            const endTime = document.getElementById("endTime").value;
+            let url = '/get_predictions';
+            if (startTime && endTime) {
+                url += `?start_time=${startTime}&end_time=${endTime}`;
+            }
+
+            fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     const table = document.querySelector("table");
@@ -101,6 +74,7 @@
                             <td>${item.prediction}</td>
                         `;
                         table.appendChild(row);
+
                         if (item.prediction === "normal") normal++;
                         else attack++;
                     });
@@ -110,16 +84,29 @@
                 });
         }
 
-        setInterval(refreshData, 10000);  // auto refresh every 10 seconds
+        setInterval(refreshData, 10000); // auto refresh every 10 seconds
     </script>
 </head>
 <body>
     <div class="container">
         <h1>Network Traffic Analysis Dashboard</h1>
+
         <div class="btn-container">
             <button class="btn-clear" onclick="resetLogs()">Clear Logs</button>
+            <button onclick="window.location.href='/analysis'">View Analysis</button>
             <button onclick="refreshData()">Refresh Data</button>
         </div>
+
+        <div class="filter-container">
+            <div>
+                <label>Start Time:</label>
+                <input type="datetime-local" id="startTime">
+                <label>End Time:</label>
+                <input type="datetime-local" id="endTime">
+                <button onclick="refreshData()">Apply Filter</button>
+            </div>
+        </div>
+
         <div class="stats">
             <span class="normal">Normal Logs: {{ normal_count }}</span>
             <span class="attack">Attack Logs: {{ attack_count }}</span>
