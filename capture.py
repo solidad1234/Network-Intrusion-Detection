@@ -158,14 +158,20 @@ def packet_callback(packet):
     if features is None:
         return
 
-    print("Extracted Features:", features)  #debugging
-
     try:
         import requests
         response = requests.post("http://127.0.0.1:5000/predict", json={"features": features})
-        print("Prediction:", response.json())
+        prediction = response.json().get("prediction", "normal")
+        
+        if prediction == "anomaly":
+            print("Anomaly detected: Dropping packet.")
+            return  # return without forwarding or processing
+        else:
+            print("Normal packet:", prediction)
+
     except Exception as e:
         print("Error sending request:", e)
+
 
 
 if __name__ == '__main__':
